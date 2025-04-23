@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>💓 Live ECG Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #00ffe1;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    #ecgValue {
+      font-size: 2em;
+      margin-bottom: 30px;
+      color: #00ff90;
+    }
+    canvas {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      max-width: 40vw;
+      max-height: 20vh;
+      align-self: center;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 0.8em;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>💓 Real-Time ECG Monitor</h1>
+  <div id="ecgValue">Loading...</div>
+  <canvas id="ecgChart" height="300"></canvas>
+  <div class="footer">Reading from ESP32 at <code>http://192.168.157.31/ecg</code></div>
+
+  <script>
+    const ctx = document.getElementById("ecgChart").getContext("2d");
+    const ecgData = {
+      labels: [],
+      datasets: [{
+        label: "ECG Signal",
+        data: [],
+        borderColor: "#00ffe1",
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+      }]
+    };
+
+    const ecgChart = new Chart(ctx, {
+      type: 'line',
+      data: ecgData,
+      options: {
+        animation: false,
+        responsive: true,
+        scales: {
+          x: {
+            display: false,
+            grid: {
+              color: '#444'
+            }
+          },
+          y: {
+            suggestedMin: -0.6,
+            suggestedMax: 0.6,
+            ticks: { color: '#00ff90' },
+            grid: { color: '#444' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#00ffe1'
+            }
+          }
+        }
+      }
+    });
+
+    // Fetch ECG from ESP32
+    setInterval(() => {
+      fetch("http://192.168.157.31/ecg")
+        .then(res => res.text())
+        .then(val => {
+          const value = parseFloat(val);
+          document.getElementById("ecgValue").innerText = `ECG: ${value.toFixed(5)}`;
+
+          ecgData.labels.push('');
+          ecgData.datasets[0].data.push(value);
+
+          if (ecgData.labels.length > 200) {
+            ecgData.labels.shift();
+            ecgData.datasets[0].data.shift();
+          }
+
+          ecgChart.update();
+        })
+        .catch(err => {
+          document.getElementById("ecgValue").innerText = "Error fetching data";
+        });
+    }, 100);
+  </script>
+</body>
+</html>
